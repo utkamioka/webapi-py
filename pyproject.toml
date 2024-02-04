@@ -1,0 +1,44 @@
+[project]
+name = "webapi"
+version = "0.1.0rc1"
+description = "Add your description here"
+authors = []
+dependencies = [
+    "click>=8.1.7",
+    "requests>=2.31.0",
+    "toml>=0.10.2",
+]
+readme = "README.md"
+requires-python = ">= 3.8"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.rye]
+managed = true
+dev-dependencies = [
+    "pip>=24.0",
+    "black>=24.1.1",
+]
+
+[tool.hatch.metadata]
+allow-direct-references = true
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/webapi"]
+
+[project.scripts]
+foo = "webapi:main.cli"
+
+[tool.black]
+line-length = 120
+target-version = ['py38', 'py39', 'py310', 'py311', 'py312']
+exclude = '''
+/(
+    \.git
+  | \.venv
+  | build
+  | dist
+)/
+'''
