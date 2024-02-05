@@ -50,6 +50,7 @@ class AuthenticatedSession(Session):
     def __init__(self, host: str, port: int, auth_token: str):
         super().__init__(host, port)
         self._auth_token = auth_token
+        self._on_purge = None
 
     def __repr__(self):
         return f"{self.__class__.__name__}({self._host!r}, {self._port!r}, '****')"
@@ -57,6 +58,15 @@ class AuthenticatedSession(Session):
     @property
     def auth_token(self) -> str:
         return self._auth_token
+
+    def on_purge(self, func: Callable) -> AuthenticatedSession:
+        self._on_purge = func
+        return self
+
+    def purge(self) -> AuthenticatedSession:
+        if callable(self._on_purge):
+            self._on_purge()
+        return self
 
     @classmethod
     def read_from(cls, path: str | os.PathLike):

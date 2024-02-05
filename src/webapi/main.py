@@ -8,10 +8,12 @@ from typing import Sequence
 
 import click
 
-from webapi.dummy import auth
 from . import __version__
 from webapi.caller import Caller, HttpResponseError
+from webapi.dummy import auth
 from webapi.session import Session
+
+logger = logging.getLogger(__name__)
 
 
 class CustomOrderGroup(click.Group):
@@ -102,14 +104,24 @@ def session(host: str, port: int, username: str, password: str):
 @click.argument("path", callback=validate_path_of_url)
 def call(method: str, path: str, headers: dict[str, str], body: str):
     path_to_session = "~/.webapi/session"
+
+    def remove_session_file():
+        logger.debug("Removing session file %s", path_to_session)
+        Path(path_to_session).expanduser().unlink(missing_ok=True)
+
     caller = Caller(
-        session=Session.read_from(path_to_session),
+        Session.read_from(path_to_session).on_purge(remove_session_file),
         credential_applier=auth.credential_applier,
     )
+
     try:
         response = caller(method, path, headers=headers, body=body and json.loads(body))
         click.echo(json.dumps(response))
     except HttpResponseError as e:
+        if e.args[0] == 401:
+            # 401(Unauthorized)が発生したら認証情報を破棄
+            caller.session.purge()
+
         click.echo("http status code = " + click.style(f"{e.args[0]}", fg="red", bold=True, blink=True))
         click.echo(e.args[1])
 

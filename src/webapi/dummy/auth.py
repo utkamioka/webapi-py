@@ -17,6 +17,5 @@ def credential_applier(session: AuthenticatedSession,
 
     logger.debug("headers = %s", headers)
     logger.debug("body = %s", body)
-    logger.debug("body.type = %s", type(body))
 
     return headers, body
