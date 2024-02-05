@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -9,7 +10,7 @@ import click
 
 from webapi.dummy import auth
 from . import __version__
-from webapi.caller import Caller
+from webapi.caller import Caller, HttpResponseError
 from webapi.session import Session
 
 
@@ -75,15 +76,15 @@ def cli(ctx: click.Context, version: bool, verbose: int) -> None:
 
 
 @cli.command(no_args_is_help=True)
-@click.option("--ipaddr", "-i", help="IP address", required=True)
+@click.option("--host", "-h", help="Host name or IP address", required=True)
 @click.option("--port", "-p", help="Port number", type=int, default=8080, show_default=True)
 @click.option("--user", "-U", "username", help="Username", required=True)
 @click.option("--pass", "-P", "password", help="Password", prompt=True, hide_input=True)
-def session(ipaddr: str, port: int, username: str, password: str):
+def session(host: str, port: int, username: str, password: str):
     (
-        Session(ipaddr, port)
+        Session(host, port)
         .authenticate(username, password, authenticator=auth.authenticator)
-        .write_to("~/.webapi/session")
+        .write_to("~/.webapi/session", mkdir=True)
     )
 
 
@@ -96,12 +97,21 @@ def session(ipaddr: str, port: int, username: str, password: str):
     help="Request headers",
     callback=parse_key_value_pair,
 )
-@click.option("--body", "-b", callback=read_file_if_starts_with_at, help="Request body")
+@click.option("--body", "-B", callback=read_file_if_starts_with_at, help="Request body")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
 def call(method: str, path: str, headers: dict[str, str], body: str):
-    caller = Caller(Session.read_from("~/.webapi/session"), credential_applier=auth.credential_applier)
-    caller(method, path, headers=headers, body=body)
+    path_to_session = "~/.webapi/session"
+    caller = Caller(
+        session=Session.read_from(path_to_session),
+        credential_applier=auth.credential_applier,
+    )
+    try:
+        response = caller(method, path, headers=headers, body=body and json.loads(body))
+        click.echo(json.dumps(response))
+    except HttpResponseError as e:
+        click.echo("http status code = " + click.style(f"{e.args[0]}", fg="red", bold=True, blink=True))
+        click.echo(e.args[1])
 
 
 @cli.command()

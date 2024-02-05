@@ -10,10 +10,13 @@ def authenticator(credential: dict) -> str:
     return "DUMMY_AUTHORIZATION_TOKEN"
 
 
-def credential_applier(session: AuthenticatedSession, headers: dict[str, str], body: str) -> tuple[dict[str, str], str]:
+def credential_applier(session: AuthenticatedSession,
+                       headers: dict[str, str],
+                       body: dict) -> tuple[dict[str, str], dict]:
+    headers.update({"Authorization": "Bearer " + session.auth_token})
+
     logger.debug("headers = %s", headers)
     logger.debug("body = %s", body)
-
-    headers.update({"Authorization": "Bearer " + session.auth_token})
+    logger.debug("body.type = %s", type(body))
 
     return headers, body
