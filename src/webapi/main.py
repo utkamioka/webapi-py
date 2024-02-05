@@ -100,9 +100,10 @@ def session(host: str, port: int, username: str, password: str):
     callback=parse_key_value_pair,
 )
 @click.option("--body", "-B", callback=read_file_if_starts_with_at, help="Request body")
+@click.option("--pprint", "-pp", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: str):
+def call(method: str, path: str, headers: dict[str, str], body: str, pprint: bool):
     path_to_session = "~/.webapi/session"
 
     def remove_session_file():
@@ -116,7 +117,7 @@ def call(method: str, path: str, headers: dict[str, str], body: str):
 
     try:
         response = caller(method, path, headers=headers, body=body and json.loads(body))
-        click.echo(json.dumps(response))
+        click.echo(json.dumps(response, indent=(2 if pprint else None)))
     except HttpResponseError as e:
         if e.args[0] == 401:
             # 401(Unauthorized)が発生したら認証情報を破棄

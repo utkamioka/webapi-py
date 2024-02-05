@@ -24,7 +24,7 @@ class Caller:
     def session(self) -> AuthenticatedSession:
         return self._session
 
-    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict):
+    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> dict:
         method = method.upper()
 
         url = f"https://{self.session.host}:{self.session.port}{path}"
