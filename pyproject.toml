@@ -20,6 +20,7 @@ managed = true
 dev-dependencies = [
     "pip>=24.0",
     "black>=24.1.1",
+    "pytest>=8.0.0",
 ]
 
 [tool.hatch.metadata]

@@ -15,9 +15,9 @@ def authenticator(credential: dict) -> str:
     return "DUMMY_AUTHORIZATION_TOKEN"
 
 
-def credential_applier(session: AuthenticatedSession,
-                       headers: dict[str, str],
-                       body: dict) -> tuple[dict[str, str], dict]:
+def credential_applier(
+    session: AuthenticatedSession, headers: dict[str, str], body: dict
+) -> tuple[dict[str, str], dict]:
     """認証情報を適用する。
 
     Returns:
