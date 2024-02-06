@@ -110,10 +110,16 @@ def call(method: str, path: str, headers: dict[str, str], body: str, pretty: boo
         logger.debug("Removing session file %s", path_to_session)
         Path(path_to_session).expanduser().unlink(missing_ok=True)
 
-    caller = Caller(
-        Session.read_from(path_to_session).on_purge(remove_session_file),
-        credential_applier=auth.credential_applier,
-    )
+    try:
+        caller = Caller(
+            Session.read_from(path_to_session).on_purge(remove_session_file),
+            credential_applier=auth.credential_applier,
+        )
+    except FileNotFoundError:
+        raise click.ClickException("No authenticated session. "
+                                   "Please authenticate using the"
+                                   " " + click.style("'session'", fg="red", bold=True) + " "
+                                   "subcommand first.")
 
     try:
         response = caller(method, path, headers=headers, body=body and json.loads(body))
