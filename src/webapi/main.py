@@ -96,14 +96,14 @@ def session(host: str, port: int, username: str, password: str):
     "-H",
     "headers",
     multiple=True,
-    help="Request headers",
+    help='Request headers (in "Host: example.com" format)',
     callback=parse_key_value_pair,
 )
 @click.option("--body", "-B", callback=read_file_if_starts_with_at, help="Request body")
-@click.option("--pprint", "-pp", is_flag=True, help="Pretty printing output")
+@click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: str, pprint: bool):
+def call(method: str, path: str, headers: dict[str, str], body: str, pretty: bool):
     path_to_session = "~/.webapi/session"
 
     def remove_session_file():
@@ -117,7 +117,7 @@ def call(method: str, path: str, headers: dict[str, str], body: str, pprint: boo
 
     try:
         response = caller(method, path, headers=headers, body=body and json.loads(body))
-        click.echo(json.dumps(response, indent=(2 if pprint else None)))
+        click.echo(json.dumps(response, indent=(2 if pretty else None)))
     except HttpResponseError as e:
         if e.args[0] == 401:
             # 401(Unauthorized)が発生したら認証情報を破棄
@@ -129,8 +129,8 @@ def call(method: str, path: str, headers: dict[str, str], body: str, pprint: boo
 
 @cli.command()
 def env():
-    click.echo(f"Python path: {sys.executable}")
-    click.echo(f"Python version: {sys.version}")
+    click.echo(click.style("Python path", fg="cyan") + ": " + sys.executable)
+    click.echo(click.style("Python version", fg="cyan") + ": " + sys.version)
 
 
 if __name__ == "__main__":
