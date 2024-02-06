@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Sequence
 
 import click
+import urllib3
 
 from . import __version__
 from webapi.caller import Caller, HttpResponseError
@@ -58,6 +59,9 @@ def parse_key_value_pair(_ctx: click.Context, _param: click.Argument, values: Se
 )
 @click.pass_context
 def cli(ctx: click.Context, version: bool, verbose: int) -> None:
+    # suppress InsecureRequestWarning
+    urllib3.disable_warnings()
+
     if version:
         click.echo(ctx.command_path + " " + __version__)
         ctx.exit()
@@ -100,10 +104,11 @@ def session(host: str, port: int, username: str, password: str):
     callback=parse_key_value_pair,
 )
 @click.option("--body", "-B", callback=read_file_if_starts_with_at, help="Request body")
+@click.option("--show-header", is_flag=True, help="Show response header")
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: str, pretty: bool):
+def call(method: str, path: str, headers: dict[str, str], body: str, show_header: bool, pretty: bool):
     path_to_session = "~/.webapi/session"
 
     def remove_session_file():
@@ -116,21 +121,30 @@ def call(method: str, path: str, headers: dict[str, str], body: str, pretty: boo
             credential_applier=auth.credential_applier,
         )
     except FileNotFoundError:
-        raise click.ClickException("No authenticated session. "
-                                   "Please authenticate using the"
-                                   " " + click.style("'session'", fg="red", bold=True) + " "
-                                   "subcommand first.")
+        raise click.ClickException(
+            "No authenticated session. "
+            "Please authenticate using the"
+            " " + click.style("'session'", fg="red", bold=True) + " "
+            "subcommand first."
+        )
 
     try:
         response = caller(method, path, headers=headers, body=body and json.loads(body))
-        click.echo(json.dumps(response, indent=(2 if pretty else None)))
+
+        if show_header:
+            click.echo(click.style(response.status_code, fg="blue") + " " + click.style(response.reason, fg="cyan"))
+            for header in response.headers.items():
+                click.echo(click.style(header[0], fg="cyan") + ": " + header[1])
+            click.echo()
+
+        click.echo(json.dumps(response.json(), indent=(2 if pretty else None)))
     except HttpResponseError as e:
-        if e.args[0] == 401:
+        if e.status_code == 401:
             # 401(Unauthorized)が発生したら認証情報を破棄
             caller.session.purge()
 
-        click.echo("http status code = " + click.style(f"{e.args[0]}", fg="red", bold=True, blink=True))
-        click.echo(e.args[1])
+        click.echo(click.style(str(e.status_code), fg="blue") + " " + click.style(e.reason, fg="cyan"))
+        click.echo(e.text)
 
 
 @cli.command()
