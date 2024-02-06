@@ -25,6 +25,8 @@ class Caller:
         return self._session
 
     def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> dict:
+        assert path.startswith("/")
+
         method = method.upper()
 
         url = f"https://{self.session.host}:{self.session.port}{path}"
@@ -47,7 +49,7 @@ class Caller:
 
         logger.debug("http request caller = %s", request_caller)
 
-        response = request_caller(url, headers=headers)
+        response = request_caller(url, headers=headers, verify=False)
         logger.debug("response.status_code = %s", response.status_code)
 
         if response.status_code != 200:

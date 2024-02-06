@@ -70,21 +70,23 @@ class AuthenticatedSession(Session):
 
     @classmethod
     def read_from(cls, path: str | os.PathLike):
+        logger.debug("Reading session from %s", path)
+
         path_to_session = Path(path).expanduser().resolve()
 
         with path_to_session.open(mode="r") as f:
-            logger.debug("Reading session from %s", path)
             session = toml.load(f)
             return AuthenticatedSession(session["host"], session["port"], session["auth_token"])
 
     def write_to(self, path: str | os.PathLike, *, mkdir: bool = False):
+        logger.debug("Writing session into %s", path)
+
         path_to_session = Path(path).expanduser().resolve()
 
         if mkdir:
             path_to_session.parent.mkdir(parents=True, exist_ok=True)
 
         with path_to_session.open(mode="w") as f:
-            logger.debug("Writing session into %s", path)
             toml.dump(self._to_dict(), f)
 
     def _to_dict(self) -> dict[str, str | int]:
