@@ -12,7 +12,20 @@ logger = logging.getLogger(__name__)
 
 
 class HttpResponseError(Exception):
-    pass
+    def __init__(self, response: requests.Response):
+        self.response = response
+
+    @property
+    def status_code(self) -> int:
+        return self.response.status_code
+
+    @property
+    def reason(self) -> str:
+        return self.response.reason
+
+    @property
+    def text(self) -> str:
+        return self.response.text
 
 
 class Caller:
@@ -24,7 +37,7 @@ class Caller:
     def session(self) -> AuthenticatedSession:
         return self._session
 
-    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> dict:
+    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> requests.Response:
         assert path.startswith("/")
 
         method = method.upper()
@@ -45,14 +58,15 @@ class Caller:
         elif method == "DELETE":
             request_caller: Callable = requests.delete
         else:
-            raise ValueError(f"Unsupported method {method}")
+            raise ValueError(f"Unsupported method {method!r}")
 
         logger.debug("http request caller = %s", request_caller)
 
         response = request_caller(url, headers=headers, verify=False)
-        logger.debug("response.status_code = %s", response.status_code)
+        logger.debug("response.status_code = %s(%s)", response.status_code, response.reason)
+        logger.debug("response.text = %s", response.text)
 
         if response.status_code != 200:
-            raise HttpResponseError(response.status_code, response.text)
+            raise HttpResponseError(response)
 
-        return response.json()
+        return response
