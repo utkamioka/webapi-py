@@ -92,6 +92,7 @@ def session(host: str, port: int, username: str, password: str):
         .authenticate(username, password, authenticator=auth.authenticator)
         .write_to("~/.webapi/session", mkdir=True)
     )
+    click.echo("Authentication was successful and the session was saved.")
 
 
 @cli.command(no_args_is_help=True)
