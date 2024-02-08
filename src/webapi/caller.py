@@ -60,8 +60,6 @@ class Caller:
         else:
             raise ValueError(f"Unsupported method {method!r}")
 
-        logger.debug("http request caller = %s", request_caller)
-
         response = request_caller(url, headers=headers, verify=False)
         logger.debug("response.status_code = %s(%s)", response.status_code, response.reason)
         logger.debug("response.text = %s", response.text)

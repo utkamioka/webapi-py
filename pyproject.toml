@@ -22,7 +22,8 @@ dev-dependencies = [
     "pip>=24.0",
     "black>=24.1.1",
     "pytest>=8.0.0",
-    "ipython>=8.18.1",
+    "ipython>=8.12.3",
+    "radon>=6.0.1",
 ]
 
 [tool.hatch.metadata]

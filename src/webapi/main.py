@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import json
 import logging
-import mimetypes
 import sys
 from functools import partial
 from pathlib import Path
@@ -53,7 +52,7 @@ def parse_key_value_pair(_ctx: click.Context, _param: click.Argument, values: Se
 
 
 @click.group(cls=CustomOrderGroup, invoke_without_command=True)
-@click.option("--version", "-V", is_flag=True, help="Show the version and exit.")
+@click.version_option(version=__version__)
 @click.option(
     "--verbose",
     "-v",
@@ -61,13 +60,10 @@ def parse_key_value_pair(_ctx: click.Context, _param: click.Argument, values: Se
     help="Verbose mode. Can be used multiple times to increase verbosity.",
 )
 @click.pass_context
-def cli(ctx: click.Context, version: bool, verbose: int) -> None:
+def cli(ctx: click.Context, verbose: int) -> None:
     # suppress InsecureRequestWarning
+    # See: https://urllib3.readthedocs.io/en/latest/advanced-usage.html#tls-warnings
     urllib3.disable_warnings()
-
-    if version:
-        click.echo(ctx.command_path + " " + __version__)
-        ctx.exit()
 
     if verbose:
         if verbose == 1:
@@ -79,7 +75,7 @@ def cli(ctx: click.Context, version: bool, verbose: int) -> None:
             )
 
     # サブコマンドが指定されていない場合はヘルプを表示
-    # （--versionや--verboseのようなグローバルオプションを定義した場合、この処理が必要になる）
+    # （--verboseのようなグローバルオプションを定義した場合、この処理が必要になる）
     if not ctx.invoked_subcommand:
         click.echo(ctx.get_help())
 
