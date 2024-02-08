@@ -2,11 +2,14 @@ from __future__ import annotations
 
 import json
 import logging
+import mimetypes
 import sys
+from functools import partial
 from pathlib import Path
 from typing import Sequence
 
 import click
+import mimeparse
 import urllib3
 
 from . import __version__
@@ -133,18 +136,25 @@ def call(method: str, path: str, headers: dict[str, str], body: str, show_header
         response = caller(method, path, headers=headers, body=body and json.loads(body))
 
         if show_header:
-            click.echo(click.style(response.status_code, fg="blue") + " " + click.style(response.reason, fg="cyan"))
-            for header in response.headers.items():
-                click.echo(click.style(header[0], fg="cyan") + ": " + header[1])
-            click.echo()
+            echo_stderr = partial(click.echo, err=True)
 
-        click.echo(json.dumps(response.json(), indent=(2 if pretty else None)))
+            echo_stderr(click.style(response.status_code, fg="blue") + " " + click.style(response.reason, fg="cyan"))
+            for header in response.headers.items():
+                echo_stderr(click.style(header[0], fg="cyan") + ": " + header[1])
+            echo_stderr()
+
+        _, subtype, _ = mimeparse.parse_mime_type(response.headers.get("Content-Type"))
+
+        if subtype == "json":
+            click.echo(json.dumps(response.json(), indent=(2 if pretty else None)))
+        else:
+            click.echo(response.text)
     except HttpResponseError as e:
         if e.status_code == 401:
             # 401(Unauthorized)が発生したら認証情報を破棄
             caller.session.purge()
 
-        click.echo(click.style(str(e.status_code), fg="blue") + " " + click.style(e.reason, fg="cyan"))
+        click.echo(click.style(str(e.status_code), fg="blue") + " " + click.style(e.reason, fg="cyan"), err=True)
         click.echo(e.text)
 
 
