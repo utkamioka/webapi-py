@@ -82,7 +82,7 @@ def cli(ctx: click.Context, verbose: int) -> None:
 
 @cli.command(no_args_is_help=True)
 @click.option("--host", "-h", help="Host name or IP address", required=True)
-@click.option("--port", "-p", help="Port number", type=int, default=8080, show_default=True)
+@click.option("--port", "-p", help="Port number", type=int, default=443, show_default=True)
 @click.option("--user", "-U", "username", help="Username", required=True)
 @click.option("--pass", "-P", "password", help="Password", prompt=True, hide_input=True)
 def session(host: str, port: int, username: str, password: str):

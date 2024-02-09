@@ -4,6 +4,7 @@ import logging
 from functools import partial
 from typing import Callable
 
+import click
 import requests
 
 from webapi.session import AuthenticatedSession
@@ -40,25 +41,23 @@ class Caller:
     def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> requests.Response:
         assert path.startswith("/")
 
-        method = method.upper()
-
         url = f"https://{self.session.host}:{self.session.port}{path}"
-        logger.info("url = %s", url)
 
         headers, body = self._credential_applier(self.session, headers, body)
-        logger.info("headers = %s", headers)
-        logger.info("body = %s", body)
 
-        if method == "GET":
-            request_caller: Callable = requests.get
-        elif method == "POST":
-            request_caller: Callable = partial(requests.post, json=body)
-        elif method == "PUT":
-            request_caller: Callable = partial(requests.put, json=body)
-        elif method == "DELETE":
-            request_caller: Callable = requests.delete
-        else:
-            raise ValueError(f"Unsupported method {method!r}")
+        callers = {
+            "GET": requests.get,
+            "POST": partial(requests.post, json=body),
+            "PUT": partial(requests.put, json=body),
+            "DELETE": requests.delete,
+        }
+
+        method = method.upper()
+        request_caller = callers.get(method, None)
+        if request_caller is None:
+            raise click.UsageError(f"Unsupported method {method!r}")
+
+        logger.info("%s %s", method, url)
 
         response = request_caller(url, headers=headers, verify=False)
         logger.debug("response.status_code = %s(%s)", response.status_code, response.reason)
