@@ -111,13 +111,11 @@ def session(host: str, port: int, username: str, password: str):
 def call(method: str, path: str, headers: dict[str, str], body: str, show_header: bool, pretty: bool):
     path_to_session = "~/.webapi/session"
 
-    def remove_session_file():
-        logger.debug("Removing session file %s", path_to_session)
-        Path(path_to_session).expanduser().unlink(missing_ok=True)
+    session_remover = partial(Path(path_to_session).expanduser().resolve().unlink, missing_ok=True)
 
     try:
         caller = Caller(
-            Session.read_from(path_to_session).on_purge(remove_session_file),
+            Session.read_from(path_to_session).on_purge(session_remover),
             credential_applier=auth.credential_applier,
         )
     except FileNotFoundError:
