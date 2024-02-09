@@ -33,7 +33,7 @@ allow-direct-references = true
 packages = ["src/webapi"]
 
 [project.scripts]
-foo = "webapi:main.cli"
+webapi = "webapi:main.cli"
 
 [tool.black]
 line-length = 120

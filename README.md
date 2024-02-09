@@ -1,6 +1,31 @@
 # webapi
 
-Describe your project here.
+認証情報からアクセストークンを取得し、
+アクセストークンによる認証付きWebAPIを呼び出すためのコマンドの雛形。
+
+以下の２点は実際のサービスの仕様に合わせて実装して下さい。
+
+* 認証情報からアクセストークンを取得
+* リクエストにアクセストークンを適用
+
+詳細は`src/webapi/dummy/auth.py`を参照して下さい。
+
+## 使い方
+
+### 認証してアクセストークンを取得
+
+```shell
+webapi session -host www.example.org --user john --pass secret
+webapi session -host www.example.org --user john
+Password: ********
+```
+
+### アクセストークンを使ってWebAPIを呼び出す
+
+```shell
+webapi call GET /any/request/path
+webapi call POST /any/request/path --body '{"name": "john", "age": 21}'
+```
 
 ## How to install python on windows
 
