@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 
+from .._types import TypeJson
 from ..session import AuthenticatedSession
 
 logger = logging.getLogger(__name__)
@@ -21,7 +22,7 @@ def authenticator(credential: dict) -> str:
 
 
 def credential_applier(
-    session: AuthenticatedSession, headers: dict[str, str], body: dict | list | None
+    session: AuthenticatedSession, headers: dict[str, str], body: TypeJson,
 ) -> tuple[dict[str, str], dict]:
     """認証情報を適用する。
 

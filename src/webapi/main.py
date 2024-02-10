@@ -11,6 +11,7 @@ import click
 import mimeparse
 import urllib3
 
+from webapi._types import TypeJson
 from . import __version__
 from .caller import Caller, HttpResponseError
 from .dummy import auth
@@ -27,7 +28,7 @@ class CustomOrderGroup(click.Group):
         return command_order + unlisted_commands
 
 
-def jsonify(ctx: click.Context, param: click.Argument, value: str) -> dict | list | None:
+def jsonify(ctx: click.Context, param: click.Argument, value: str | None) -> TypeJson:
     text = read_file_if_starts_with_at(ctx, param, value)
     if text is not None:
         try:
@@ -52,6 +53,8 @@ def read_file_if_starts_with_at(_ctx: click.Context, _param: click.Argument, val
 
 
 def validate_path_of_url(_ctx: click.Context, _param: click.Argument, value: str) -> str:
+    """文字列が'/'で始まることを検証する。
+    """
     if not value or not value.startswith("/"):
         raise click.BadParameter(f"{value}: must start with '/'")
     return value
@@ -122,7 +125,7 @@ def session(host: str, port: int, username: str, password: str):
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: dict | list | None, show_header: bool, pretty: bool):
+def call(method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool):
     path_to_session = "~/.webapi/session"
 
     session_remover = partial(Path(path_to_session).expanduser().resolve().unlink, missing_ok=True)

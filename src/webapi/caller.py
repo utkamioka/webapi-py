@@ -7,6 +7,7 @@ from typing import Callable
 import click
 import requests
 
+from ._types import TypeJson
 from .session import AuthenticatedSession
 
 logger = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ class Caller:
                  method: str,
                  path: str, *,
                  headers: dict[str, str],
-                 body: dict | list | None) -> requests.Response:
+                 body: TypeJson) -> requests.Response:
         assert path.startswith("/")
 
         url = f"https://{self.session.host}:{self.session.port}{path}"
