@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 
-from webapi.session import AuthenticatedSession
+from ..session import AuthenticatedSession
 
 logger = logging.getLogger(__name__)
 

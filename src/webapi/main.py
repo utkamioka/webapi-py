@@ -12,9 +12,9 @@ import mimeparse
 import urllib3
 
 from . import __version__
-from webapi.caller import Caller, HttpResponseError
-from webapi.dummy import auth
-from webapi.session import Session
+from .caller import Caller, HttpResponseError
+from .dummy import auth
+from .session import Session
 
 logger = logging.getLogger(__name__)
 

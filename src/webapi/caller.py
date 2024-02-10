@@ -7,7 +7,7 @@ from typing import Callable
 import click
 import requests
 
-from webapi.session import AuthenticatedSession
+from .session import AuthenticatedSession
 
 logger = logging.getLogger(__name__)
 
