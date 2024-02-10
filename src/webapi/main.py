@@ -53,8 +53,7 @@ def read_file_if_starts_with_at(_ctx: click.Context, _param: click.Argument, val
 
 
 def validate_path_of_url(_ctx: click.Context, _param: click.Argument, value: str) -> str:
-    """文字列が'/'で始まることを検証する。
-    """
+    """文字列が'/'で始まることを検証する。"""
     if not value or not value.startswith("/"):
         raise click.BadParameter(f"{value}: must start with '/'")
     return value

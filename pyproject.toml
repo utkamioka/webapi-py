@@ -24,6 +24,7 @@ dev-dependencies = [
     "pytest>=8.0.0",
     "ipython>=8.12.3",
     "radon>=6.0.1",
+    "pytest-mock>=3.12.0",
 ]
 
 [tool.hatch.metadata]
@@ -46,3 +47,9 @@ exclude = '''
   | dist
 )/
 '''
+
+[tool.pytest.ini_options]
+addopts = "-q"
+testpaths = [
+    "tests",
+]
