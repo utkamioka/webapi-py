@@ -38,7 +38,11 @@ class Caller:
     def session(self) -> AuthenticatedSession:
         return self._session
 
-    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: dict) -> requests.Response:
+    def __call__(self,
+                 method: str,
+                 path: str, *,
+                 headers: dict[str, str],
+                 body: dict | list | None) -> requests.Response:
         assert path.startswith("/")
 
         url = f"https://{self.session.host}:{self.session.port}{path}"

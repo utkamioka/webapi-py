@@ -27,7 +27,21 @@ class CustomOrderGroup(click.Group):
         return command_order + unlisted_commands
 
 
-def read_file_if_starts_with_at(_ctx: click.Context, _param: click.Argument, value: str) -> str:
+def jsonify(ctx: click.Context, param: click.Argument, value: str) -> dict | list | None:
+    text = read_file_if_starts_with_at(ctx, param, value)
+    if text is not None:
+        try:
+            return json.loads(text)
+        except Exception as e:
+            raise click.BadParameter(repr(e))
+    return None
+
+
+def read_file_if_starts_with_at(_ctx: click.Context, _param: click.Argument, value: str | None) -> str | None:
+    """文字列が'@'で始まる場合は、それをテキストファイルのファイル名と見なして、
+    その内容を文字列で返す。
+    そうでない場合は、文字列をそのまま帰す。
+    """
     if value and value.startswith("@"):
         filename = value[1:]
         try:
@@ -103,12 +117,12 @@ def session(host: str, port: int, username: str, password: str):
     help='Request headers (in "Host: example.com" format)',
     callback=parse_key_value_pair,
 )
-@click.option("--body", "-B", callback=read_file_if_starts_with_at, help="Request body")
+@click.option("--body", "-B", callback=jsonify, help="Request body")
 @click.option("--show-header", is_flag=True, help="Show response header")
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: str, show_header: bool, pretty: bool):
+def call(method: str, path: str, headers: dict[str, str], body: dict | list | None, show_header: bool, pretty: bool):
     path_to_session = "~/.webapi/session"
 
     session_remover = partial(Path(path_to_session).expanduser().resolve().unlink, missing_ok=True)
@@ -127,7 +141,7 @@ def call(method: str, path: str, headers: dict[str, str], body: str, show_header
         )
 
     try:
-        response = caller(method, path, headers=headers, body=body and json.loads(body))
+        response = caller(method, path, headers=headers, body=body)
 
         if show_header:
             echo_stderr = partial(click.echo, err=True)

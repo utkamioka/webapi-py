@@ -21,7 +21,7 @@ def authenticator(credential: dict) -> str:
 
 
 def credential_applier(
-    session: AuthenticatedSession, headers: dict[str, str], body: dict
+    session: AuthenticatedSession, headers: dict[str, str], body: dict | list | None
 ) -> tuple[dict[str, str], dict]:
     """認証情報を適用する。
 
