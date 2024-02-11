@@ -59,6 +59,7 @@ class Caller:
             "GET": requests.get,
             "POST": partial(requests.post, json=body),
             "PUT": partial(requests.put, json=body),
+            "PATCH": partial(requests.patch, json=body),
             "DELETE": requests.delete,
         }
 

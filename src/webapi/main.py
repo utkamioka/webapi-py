@@ -124,7 +124,7 @@ def session(host: str, port: int, username: str, password: str):
 @click.option("--body", "-B", callback=jsonify, help="Request body")
 @click.option("--show-header", is_flag=True, help="Show response header")
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
-@click.argument("method", type=click.Choice(["GET", "POST", "PUT", "DELETE"], case_sensitive=False))
+@click.argument("method", type=click.Choice(["GET", "POST", "PUT", "PATCH", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
 def call(method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool):
     path_to_session = "~/.webapi/session"
