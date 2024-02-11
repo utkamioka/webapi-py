@@ -39,14 +39,23 @@ class Caller:
     def session(self) -> AuthenticatedSession:
         return self._session
 
-    def __call__(self, method: str, path: str, *, headers: dict[str, str], body: TypeJson) -> requests.Response:
+    def __call__(
+        self,
+        method: str,
+        path: str,
+        *,
+        headers: dict[str, str] = None,
+        body: TypeJson = None,
+    ) -> requests.Response:
         assert path.startswith("/")
+
+        headers = headers or dict()
 
         url = f"https://{self.session.host}:{self.session.port}{path}"
 
         headers, body = self._credential_applier(self.session, headers, body)
 
-        callers = {
+        callers: dict[str, Callable] = {
             "GET": requests.get,
             "POST": partial(requests.post, json=body),
             "PUT": partial(requests.put, json=body),

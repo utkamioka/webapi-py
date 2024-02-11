@@ -28,38 +28,40 @@ class CustomOrderGroup(click.Group):
         return command_order + unlisted_commands
 
 
-def jsonify(ctx: click.Context, param: click.Argument, value: str | None) -> TypeJson:
-    text = read_file_if_starts_with_at(ctx, param, value)
+def jsonify(_ctx, _param, value: str | None) -> TypeJson:
+    try:
+        text = read_file_if_starts_with_at(value)
+    except FileNotFoundError as e:
+        raise click.BadParameter(f"{e.filename}: {e.args[-1]}") from e
+
     if text is not None:
         try:
             return json.loads(text)
         except Exception as e:
-            raise click.BadParameter(repr(e))
+            raise click.BadParameter(f"{e!r}: text = {text!r}") from e
+
     return None
 
 
-def read_file_if_starts_with_at(_ctx: click.Context, _param: click.Argument, value: str | None) -> str | None:
+def read_file_if_starts_with_at(text: str | None) -> str | None:
     """文字列が'@'で始まる場合は、それをテキストファイルのファイル名と見なして、
     その内容を文字列で返す。
     そうでない場合は、文字列をそのまま帰す。
     """
-    if value and value.startswith("@"):
-        filename = value[1:]
-        try:
-            return Path(filename).expanduser().read_text()
-        except FileNotFoundError:
-            raise click.BadParameter(f"File {filename!r} not found.")
-    return value
+    if text and text.startswith("@"):
+        filename = text[1:]
+        return Path(filename).expanduser().read_text()
+    return text
 
 
-def validate_path_of_url(_ctx: click.Context, _param: click.Argument, value: str) -> str:
+def validate_path_of_url(_ctx, _param, value: str) -> str:
     """文字列が'/'で始まることを検証する。"""
     if not value or not value.startswith("/"):
         raise click.BadParameter(f"{value}: must start with '/'")
     return value
 
 
-def parse_key_value_pair(_ctx: click.Context, _param: click.Argument, values: Sequence[str]) -> dict[str, str]:
+def parse_key_value_pair(_ctx, _param, values: Sequence[str]) -> dict[str, str]:
     result = {}
     for item in values:
         key, val = item.split(":", maxsplit=1)  # 最初の':'で分割
