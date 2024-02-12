@@ -72,6 +72,10 @@ def parse_key_value_pair(_ctx, _param, values: Sequence[str]) -> dict[str, str]:
     return dict(item.split(":", maxsplit=1) for item in values)
 
 
+def _path_to_session(appname: str) -> Path:
+    return Path(".") / ("." + appname) / "session.toml"
+
+
 @click.group(cls=CustomOrderGroup, invoke_without_command=True)
 @click.version_option(version=__version__)
 @click.option(
@@ -106,11 +110,13 @@ def cli(ctx: click.Context, verbose: int) -> None:
 @click.option("--port", "-p", help="Port number", type=int, default=443, show_default=True)
 @click.option("--user", "-U", "username", help="Username", required=True)
 @click.option("--pass", "-P", "password", help="Password", prompt=True, hide_input=True)
-def session(host: str, port: int, username: str, password: str):
+@click.pass_context
+def session(ctx: click.Context, host: str, port: int, username: str, password: str):
+    path_to_session = _path_to_session(ctx.parent.command_path)
     (
         Session(host, port)
         .authenticate(username, password, authenticator=auth.authenticator)
-        .write_to("~/.webapi/session", mkdir=True)
+        .write_to(path_to_session, mkdir=True)
     )
     click.echo("Authentication was successful and the session was saved.")
 
@@ -129,10 +135,13 @@ def session(host: str, port: int, username: str, password: str):
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "PATCH", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-def call(method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool):
-    path_to_session = "~/.webapi/session"
+@click.pass_context
+def call(
+    ctx: click.Context, method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool
+):
+    path_to_session = _path_to_session(ctx.parent.command_path)
 
-    session_remover = partial(Path(path_to_session).expanduser().resolve().unlink, missing_ok=True)
+    session_remover = partial(path_to_session.expanduser().resolve().unlink, missing_ok=True)
 
     try:
         caller = Caller(

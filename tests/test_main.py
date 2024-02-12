@@ -6,6 +6,7 @@ from pathlib import Path
 
 import click
 import pytest
+import pytest_mock
 
 from webapi import main
 
@@ -105,3 +106,10 @@ def test_parse_key_value_pair():
 def test_parse_key_value_pair__invalid():
     with pytest.raises(ValueError):
         main.parse_key_value_pair(None, None, ["a"])
+
+
+def test__path_to_session(mocker: pytest_mock.MockFixturem):
+    mock_ctx = mocker.MagicMock()
+    mock_ctx.parent.command_path = "appname"
+
+    assert main._path_to_session(mock_ctx) == Path(".appname") / "session.toml"
