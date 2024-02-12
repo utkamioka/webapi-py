@@ -4,6 +4,7 @@ import json
 import logging
 import sys
 from functools import partial
+from importlib.metadata import distributions
 from pathlib import Path
 from typing import Sequence
 
@@ -174,6 +175,9 @@ def call(method: str, path: str, headers: dict[str, str], body: TypeJson, show_h
 def env():
     click.echo(click.style("Python path", fg="cyan") + ": " + sys.executable)
     click.echo(click.style("Python version", fg="cyan") + ": " + sys.version)
+
+    dependencies = [f"{dist.metadata['Name']}=={dist.version}" for dist in distributions()]
+    click.echo(click.style("Python dependencies", fg="cyan") + f": {dependencies}")
 
 
 if __name__ == "__main__":
