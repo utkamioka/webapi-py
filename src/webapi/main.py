@@ -63,11 +63,13 @@ def validate_path_of_url(_ctx, _param, value: str) -> str:
 
 
 def parse_key_value_pair(_ctx, _param, values: Sequence[str]) -> dict[str, str]:
-    result = {}
-    for item in values:
-        key, val = item.split(":", maxsplit=1)  # 最初の':'で分割
-        result[key.strip()] = val.strip()
-    return result
+    """ "key:value"形式の文字列を格納した配列からdictに変換する。
+
+    Examples:
+        >>> parse_key_value_pair(["a:alpha", "b:bravo", "c:charlie"])
+        {"a": "alpha", "b": "bravo", "c": "charlie"}
+    """
+    return dict(item.split(":", maxsplit=1) for item in values)
 
 
 @click.group(cls=CustomOrderGroup, invoke_without_command=True)
