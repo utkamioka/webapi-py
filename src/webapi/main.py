@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import sys
@@ -12,11 +13,11 @@ import click
 import mimeparse
 import urllib3
 
-from webapi._types import TypeJson
 from . import __version__
+from ._types import TypeJson
 from .caller import Caller, HttpResponseError
 from .dummy import auth
-from .session import Session
+from .session import Session, AuthenticatedSession
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class CustomOrderGroup(click.Group):
 def jsonify(_ctx, _param, value: str | None) -> TypeJson:
     try:
         text = read_file_if_starts_with_at(value)
-    except FileNotFoundError as e:
+    except OSError as e:
         raise click.BadParameter(f"{e.filename}: {e.args[-1]}") from e
 
     if text is not None:
@@ -73,7 +74,17 @@ def parse_key_value_pair(_ctx, _param, values: Sequence[str]) -> dict[str, str]:
 
 
 def _path_to_session(appname: str) -> Path:
-    return Path(".") / ("." + appname) / "session.toml"
+    return Path(".") / ("." + appname) / "session"
+
+
+def restore_session(*, appname: str) -> AuthenticatedSession:
+    """環境変数またはファイルからセッションを復元する。"""
+    with contextlib.suppress(KeyError):
+        return Session.from_env(prefix=appname.upper() + "_")
+
+    path_to_session = _path_to_session(appname)
+    session_remover = partial(path_to_session.expanduser().absolute().unlink, missing_ok=True)
+    return Session.from_file(path_to_session).on_purge(session_remover)
 
 
 @click.group(cls=CustomOrderGroup, invoke_without_command=True)
@@ -109,16 +120,19 @@ def cli(ctx: click.Context, verbose: int) -> None:
 @click.option("--host", "-h", help="Host name or IP address", required=True)
 @click.option("--port", "-p", help="Port number", type=int, default=443, show_default=True)
 @click.option("--user", "-U", "username", help="Username", required=True)
-@click.option("--pass", "-P", "password", help="Password", prompt=True, hide_input=True)
+@click.option("--pass", "-P", "password", help="Password  [required, otherwise prompt]", prompt=True, hide_input=True)
+@click.option("--env", "export_to_env", is_flag=True, help="Export session as environment variable to stdout")
 @click.pass_context
-def session(ctx: click.Context, host: str, port: int, username: str, password: str):
-    path_to_session = _path_to_session(ctx.parent.command_path)
-    (
-        Session(host, port)
-        .authenticate(username, password, authenticator=auth.authenticator)
-        .write_to(path_to_session, mkdir=True)
-    )
-    click.echo("Authentication was successful and the session was saved.")
+def session(ctx: click.Context, host: str, port: int, username: str, password: str, export_to_env: bool) -> None:
+    appname = ctx.parent.command_path
+
+    authenticated_session = Session(host, port).authenticate(username, password, authenticator=auth.authenticator)
+
+    if export_to_env:
+        authenticated_session.print_to_env(prefix=appname.upper() + "_")
+    else:
+        authenticated_session.write_to_file(_path_to_session(appname))
+        click.echo("Authentication was successful and the session was saved.")
 
 
 @cli.command(no_args_is_help=True)
@@ -139,21 +153,14 @@ def session(ctx: click.Context, host: str, port: int, username: str, password: s
 def call(
     ctx: click.Context, method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool
 ):
-    path_to_session = _path_to_session(ctx.parent.command_path)
-
-    session_remover = partial(path_to_session.expanduser().resolve().unlink, missing_ok=True)
+    appname = ctx.parent.command_path
 
     try:
-        caller = Caller(
-            Session.read_from(path_to_session).on_purge(session_remover),
-            credential_applier=auth.credential_applier,
-        )
+        caller = Caller(restore_session(appname=appname), credential_applier=auth.credential_applier)
     except FileNotFoundError:
         raise click.ClickException(
-            "No authenticated session. "
-            "Please authenticate using the"
-            " " + click.style("'session'", fg="red", bold=True) + " "
-            "subcommand first."
+            "No authenticated session. Please authenticate using the"
+            " " + click.style("'session'", fg="red", bold=True) + " subcommand first."
         )
 
     try:

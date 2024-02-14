@@ -12,7 +12,7 @@ def authenticator(credential: dict) -> str:
     """認証する。
 
     Returns:
-        認証トークン
+        アクセストークン
     """
     # 認証情報のロギングはしない方が望ましい
     logger.debug("credential = %s", credential)
@@ -25,11 +25,11 @@ def credential_applier(
     session: AuthenticatedSession,
     headers: dict[str, str],
     body: TypeJson,
-) -> tuple[dict[str, str], dict]:
-    """認証情報を適用する。
+) -> tuple[dict[str, str], TypeJson]:
+    """アクセストークンを適用する。
 
     Returns:
-        認証情報を適用したヘッダとボディ
+        アクセストークンを適用したヘッダとボディ
     """
     headers.update({"Authorization": "Bearer " + session.auth_token})
 

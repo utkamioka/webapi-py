@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import random
 import string
+import sys
 from pathlib import Path
 from typing import Callable
 from unittest.mock import call
 
 import pytest
 import toml
+from _pytest.capture import CaptureFixture
+from _pytest.monkeypatch import MonkeyPatch
 from pytest_mock import MockerFixture
 
 from webapi.session import Session, AuthenticatedSession
@@ -44,7 +47,7 @@ class TestSession:
         assert repr(session) == "Session('1.2.3.4', 1234)"
 
 
-class TestAuthorization:
+class TestAuthenticatedSession:
     def test_constructor(self):
         session = AuthenticatedSession("1.2.3.4", 1234, "SECRET_STRING")
         assert session.host == "1.2.3.4"
@@ -57,7 +60,7 @@ class TestAuthorization:
         assert str(session) == "AuthenticatedSession('1.2.3.4', 1234, '****')"
         assert repr(session) == "AuthenticatedSession('1.2.3.4', 1234, '****')"
 
-    def test_read_from(self, tmp_path: Path, random_string: Callable):
+    def test_from_file(self, tmp_path: Path, random_string: Callable):
         path = tmp_path / "session"
         auth_token = random_string(32)
         with path.open(mode="wt") as f:
@@ -65,12 +68,12 @@ class TestAuthorization:
             print("port=9999", file=f)
             print(f'auth_token="{auth_token}"', file=f)
 
-        session = AuthenticatedSession.read_from(path)
+        session = AuthenticatedSession.from_file(path)
         assert session.host == "www.example.org"
         assert session.port == 9999
         assert session.auth_token == auth_token
 
-    def test_read_from__too_few_entries(self, tmp_path: Path):
+    def test_from_file__too_few_entries(self, tmp_path: Path):
         path = tmp_path / "session"
 
         with path.open(mode="wt") as f:
@@ -79,7 +82,7 @@ class TestAuthorization:
             print('auth_token="SECRET"', file=f)
 
         with pytest.raises(KeyError):
-            AuthenticatedSession.read_from(path)
+            AuthenticatedSession.from_file(path)
 
         with path.open(mode="wt") as f:
             print('host="www.example.org"', file=f)
@@ -87,7 +90,7 @@ class TestAuthorization:
             print('auth_token="SECRET"', file=f)
 
         with pytest.raises(KeyError):
-            AuthenticatedSession.read_from(path)
+            AuthenticatedSession.from_file(path)
 
         with path.open(mode="wt") as f:
             print('host="www.example.org"', file=f)
@@ -95,21 +98,82 @@ class TestAuthorization:
             # auth_token is missing
 
         with pytest.raises(KeyError):
-            AuthenticatedSession.read_from(path)
+            AuthenticatedSession.from_file(path)
 
-    def test_write_to(self, tmp_path: Path, random_string: Callable, random_int: Callable):
+    def test_write_to_file(self, tmp_path: Path, random_string: Callable, random_int: Callable):
         host = random_string(10)
         port = random_int(0, 65535)
         auth_token = random_string(32)
-
-        path = tmp_path / "session.toml"
-
         session = AuthenticatedSession(host, port, auth_token)
-        session.write_to(path)
+
+        path = tmp_path / "session"
+        session.write_to_file(path)
 
         # TOML形式で書き込まれていること
         with path.open(mode="rt") as f:
             assert toml.load(f) == {"host": host, "port": port, "auth_token": auth_token}
+
+    def test_write_to_file__mkdir(self, tmp_path: Path, random_string: Callable, random_int: Callable):
+        host = random_string(10)
+        port = random_int(0, 65535)
+        auth_token = random_string(32)
+        session = AuthenticatedSession(host, port, auth_token)
+
+        path_under_subdir = tmp_path / "__subdir__" / "session"
+        assert not path_under_subdir.parent.exists()
+
+        with pytest.raises(FileNotFoundError):
+            session.write_to_file(path_under_subdir)
+
+        session.write_to_file(path_under_subdir, mkdir=True)
+        assert path_under_subdir.parent.exists()
+        assert path_under_subdir.exists()
+
+    def test_from_env(self, monkeypatch: MonkeyPatch):
+        monkeypatch.setenv("WEBAPI_HOST", "www.example.org")
+        monkeypatch.setenv("WEBAPI_PORT", "9999")
+        monkeypatch.setenv("WEBAPI_AUTH_TOKEN", "SECRET_AUTH_TOKEN")
+
+        session = AuthenticatedSession.from_env(prefix="WEBAPI_")
+
+        assert session.host == "www.example.org"
+        assert session.port == 9999
+        assert session.auth_token == "SECRET_AUTH_TOKEN"
+
+    def test_from_env__port_not_int(self, monkeypatch: MonkeyPatch):
+        monkeypatch.setenv("WEBAPI_HOST", "www.example.org")
+        monkeypatch.setenv("WEBAPI_PORT", "123abc")
+        monkeypatch.setenv("WEBAPI_AUTH_TOKEN", "SECRET_AUTH_TOKEN")
+
+        with pytest.raises(ValueError):
+            AuthenticatedSession.from_env(prefix="WEBAPI_")
+
+    def test_print_to_env(self, capsys: CaptureFixture):
+        session = AuthenticatedSession("www.example.org", 999, "*SECRET*")
+        session.print_to_env(prefix="XXX_")
+
+        captured = capsys.readouterr()
+
+        assert captured.out == "export XXX_HOST=www.example.org\nexport XXX_PORT=999\nexport XXX_AUTH_TOKEN=*SECRET*\n"
+        assert captured.err == ""
+
+    def test_print_to_env__empty_prefix(self, capsys: CaptureFixture):
+        session = AuthenticatedSession("www.example.org", 123, "*SECRET*")
+        session.print_to_env()
+
+        captured = capsys.readouterr()
+
+        assert captured.out == "export HOST=www.example.org\nexport PORT=123\nexport AUTH_TOKEN=*SECRET*\n"
+        assert captured.err == ""
+
+    def test_print_to_env__to_stderr(self, capsys: CaptureFixture):
+        session = AuthenticatedSession("www.example.org", 9999, "*SECRET*")
+        session.print_to_env(file=sys.stderr)
+
+        captured = capsys.readouterr()
+
+        assert captured.out == ""
+        assert captured.err == "export HOST=www.example.org\nexport PORT=9999\nexport AUTH_TOKEN=*SECRET*\n"
 
     def test_purge(self, mocker: MockerFixture):
         session = AuthenticatedSession("", 0, "")
