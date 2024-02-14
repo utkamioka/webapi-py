@@ -1,14 +1,24 @@
 from __future__ import annotations
 
 import json
+import os
 from json import JSONDecodeError
 from pathlib import Path
 
 import click
 import pytest
-import pytest_mock
+import toml
+from _pytest.monkeypatch import MonkeyPatch
 
 from webapi import main
+
+
+@pytest.fixture
+def tmp_dir(tmp_path: Path):
+    cwd = Path.cwd()
+    os.chdir(tmp_path)
+    yield tmp_path
+    os.chdir(cwd)
 
 
 def test_jsonify():
@@ -108,8 +118,61 @@ def test_parse_key_value_pair__invalid():
         main.parse_key_value_pair(None, None, ["a"])
 
 
-def test__path_to_session(mocker: pytest_mock.MockFixturem):
-    mock_ctx = mocker.MagicMock()
-    mock_ctx.parent.command_path = "appname"
+def test__path_to_session():
+    assert main._path_to_session(appname="appname") == Path(".appname") / "session"
 
-    assert main._path_to_session(mock_ctx) == Path(".appname") / "session.toml"
+
+def test_restore_session__env(monkeypatch: MonkeyPatch):
+    monkeypatch.setenv("APPNAME_HOST", "foo")
+    monkeypatch.setenv("APPNAME_PORT", "65535")
+    monkeypatch.setenv("APPNAME_AUTH_TOKEN", "bar")
+
+    session = main.restore_session(appname="appname")
+
+    assert session.host == "foo"
+    assert session.port == 65535
+    assert session.auth_token == "bar"
+
+
+def test_restore_session__file(tmp_dir: Path):
+    appname = "__appname__"
+
+    assert tmp_dir == Path.cwd()
+
+    path = Path(".") / f".{appname}" / "session"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open(mode="wt") as f:
+        toml.dump({"host": "www.example.org", "port": 999, "auth_token": "*SECRET*"}, f)
+
+    session = main.restore_session(appname=appname)
+
+    assert session.host == "www.example.org"
+    assert session.port == 999
+    assert session.auth_token == "*SECRET*"
+
+
+def test_restore_session__missing_both(tmp_dir: Path):
+    with pytest.raises(FileNotFoundError):
+        main.restore_session(appname="appname")
+
+
+def test_restore_session__existing_both(monkeypatch: MonkeyPatch, tmp_dir: Path):
+    appname = "appname"
+
+    monkeypatch.setenv("APPNAME_HOST", "www1.example.org")
+    monkeypatch.setenv("APPNAME_PORT", "1234")
+    monkeypatch.setenv("APPNAME_AUTH_TOKEN", "*SECRET1*")
+
+    path = tmp_dir / f".{appname}" / "session"
+    path.parent.mkdir(parents=True, exist_ok=True)
+
+    with path.open(mode="wt") as f:
+        toml.dump({"host": "www2.example.org", "port": 4321, "auth_token": "*SECRET2*"}, f)
+
+    session = main.restore_session(appname="appname")
+
+    # 環境変数とファイル、両方ある場合は、環境変数を優先適用
+    assert session.host == "www1.example.org"
+    assert session.port == 1234
+    assert session.auth_token == "*SECRET1*"

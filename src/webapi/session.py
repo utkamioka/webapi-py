@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 import os
+from operator import itemgetter
 from pathlib import Path
 from typing import Callable
 
@@ -36,8 +37,12 @@ class Session:
         return AuthenticatedSession(self.host, self.port, auth_token)
 
     @staticmethod
-    def read_from(path: str | os.PathLike) -> AuthenticatedSession:
-        return AuthenticatedSession.read_from(path)
+    def from_file(path: str | os.PathLike) -> AuthenticatedSession:
+        return AuthenticatedSession.from_file(path)
+
+    @staticmethod
+    def from_env(prefix: str | None) -> AuthenticatedSession:
+        return AuthenticatedSession.from_env(prefix)
 
 
 class AuthenticatedSession(Session):
@@ -69,14 +74,14 @@ class AuthenticatedSession(Session):
         return self
 
     @classmethod
-    def read_from(cls, path: str | os.PathLike):
+    def from_file(cls, path: str | os.PathLike) -> AuthenticatedSession:
         path_to_session = Path(path).expanduser().resolve()
 
         with path_to_session.open(mode="r") as f:
             session = toml.load(f)
             return AuthenticatedSession(session["host"], session["port"], session["auth_token"])
 
-    def write_to(self, path: str | os.PathLike, *, mkdir: bool = False):
+    def write_to_file(self, path: str | os.PathLike, *, mkdir: bool = False) -> AuthenticatedSession:
         path_to_session = Path(path).expanduser().resolve()
 
         if mkdir:
@@ -84,6 +89,27 @@ class AuthenticatedSession(Session):
 
         with path_to_session.open(mode="w") as f:
             toml.dump(self._to_dict(), f)
+
+        return self
+
+    @classmethod
+    def from_env(cls, prefix: str | None) -> AuthenticatedSession | None:
+        prefix = prefix or ""
+
+        names = [f"{prefix}{name}" for name in ("HOST", "PORT", "AUTH_TOKEN")]
+        host, port, auth_token = itemgetter(*names)(os.environ)
+
+        return AuthenticatedSession(host, int(port), auth_token)
+
+    def print_to_env(self, prefix: str | None = None, file=None) -> AuthenticatedSession:
+        prefix = prefix or ""
+
+        # TODO: prefixに空白文字を含まないことを確認する
+
+        for key, value in self._to_dict().items():
+            print(f"export {prefix}{key.upper()}={value}", file=file)
+
+        return self
 
     def _to_dict(self) -> dict[str, str | int]:
         return {"host": self.host, "port": self.port, "auth_token": self._auth_token}

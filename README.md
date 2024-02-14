@@ -12,22 +12,29 @@
 
 ## 使い方
 
-### 認証してアクセストークンを取得
+### （１）認証してアクセストークンを取得
 
 ```shell
-webapi session -host www.example.org --user john --pass secret
-webapi session -host www.example.org --user john
+# 認証済みセッションへのアクセストークンをファイルに保存
+webapi session --host www.example.org --user john --pass secret
+webapi session --host www.example.org --user john
 Password: ********
+ls .webapi/session
+
+# 認証済みセッションへのアクセストークンを環境変数に保存
+eval `webapi session --host www.example.org --user john --pass secret --env`
+printenv | grep WEBAPI
 ```
 
-### アクセストークンを使ってWebAPIを呼び出す
+### （２）アクセストークンを使ってWebAPIを呼び出す
 
 ```shell
+# アクセストークンは環境変数、またはファイルから取得され、RestAPIの呼び出しに自動適用
 webapi call GET /any/request/path
 webapi call POST /any/request/path --body '{"name": "john", "age": 21}'
 ```
 
-## How to install python on windows
+## （ヒント）WindowsへのPythonインストール方法
 
 Visit [python.org](https://www.python.org/downloads/), or use `winget`.
 
@@ -36,14 +43,15 @@ winget install Python.Python.3.12
 py -V  # => Python 3.12.0 
 ```
 
-## How to activate(deactivate) venv on windows
+## （ヒント）Windowsでvenvをactivate(deactivate)する方法
 
-* Create and move empty directory, and then...
+* 空のディレクトリへ移動してから、以下のコマンドを実行:
 
 ```shell
 # on GitBash
 py -m venv venv
 source ./venv/Scripts/activate
+
 deactivate
 ```
 
@@ -51,6 +59,7 @@ deactivate
 # on CMD.exe
 py -m venv venv
 .\venv\Scripts\activate.bat
+
 deactivate
 ```
 
@@ -59,12 +68,13 @@ deactivate
 py -m venv venv
 Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
 .\venv\Scripts\Activate.ps1
+
 deactivate
 ```
 
-## How to install
+## インストール方法
 
-* with venv
+* venvへインストール（venvがactivateしてあること）
 
 ```shell
 # via HTTPS 
@@ -73,7 +83,7 @@ python -m pip install git+https://github.com/utkamioka/webapi-py.git
 python -m pip install git+ssh://git@github.com/utkamioka/webapi-py.git
 ```
 
-* without venv
+* venvを使わずインストール（`--user`でユーザ固有環境にインストール）
 
 ```shell
 py -m pip install --user git+https://github.com/utkamioka/webapi-py.git
@@ -83,7 +93,7 @@ py -m pip install --user git+ssh://git@github.com/utkamioka/webapi-py.git
 py -m site --user-site  # => %AppData%\Python\PythonXY\site-packages 
 ```
 
-## How to run
+## 実行方法
 
 
 ```shell
@@ -91,8 +101,7 @@ foo session -i 1.2.3.4 -p 9999 -U yamada -P asdf1234
 foo call GET /path/to/service/api --header foo:bar --header xxx:yyy --body '{}' 
 ```
 
-
-# 注意
+## 注意
 
 
 > [!NOTE]
