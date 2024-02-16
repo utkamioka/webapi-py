@@ -153,7 +153,7 @@ def test_restore_session__file(tmp_dir: Path):
 
 
 def test_restore_session__missing_both(tmp_dir: Path):
-    with pytest.raises(FileNotFoundError):
+    with pytest.raises(click.ClickException):
         main.restore_session(appname="appname")
 
 

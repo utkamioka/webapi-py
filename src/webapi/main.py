@@ -82,9 +82,16 @@ def restore_session(*, appname: str) -> AuthenticatedSession:
     with contextlib.suppress(KeyError):
         return Session.from_env(prefix=appname.upper() + "_")
 
-    path_to_session = _path_to_session(appname)
-    session_remover = partial(path_to_session.expanduser().absolute().unlink, missing_ok=True)
-    return Session.from_file(path_to_session).on_purge(session_remover)
+    try:
+        path_to_session = _path_to_session(appname)
+        session_remover = partial(path_to_session.expanduser().absolute().unlink, missing_ok=True)
+
+        return Session.from_file(path_to_session).on_purge(session_remover)
+    except FileNotFoundError:
+        raise click.ClickException(
+            "No authenticated session. Please authenticate using the"
+            " " + click.style("'session'", fg="red", bold=True) + " subcommand first."
+        )
 
 
 @click.group(cls=CustomOrderGroup, invoke_without_command=True)
@@ -155,13 +162,7 @@ def call(
 ):
     appname = ctx.parent.command_path
 
-    try:
-        caller = Caller(restore_session(appname=appname), credential_applier=auth.credential_applier)
-    except FileNotFoundError:
-        raise click.ClickException(
-            "No authenticated session. Please authenticate using the"
-            " " + click.style("'session'", fg="red", bold=True) + " subcommand first."
-        )
+    caller = Caller(restore_session(appname=appname), credential_applier=auth.credential_applier)
 
     try:
         response = caller(method, path, headers=headers, body=body)
