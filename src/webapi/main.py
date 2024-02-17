@@ -152,20 +152,33 @@ def session(ctx: click.Context, host: str, port: int, username: str, password: s
     callback=parse_key_value_pair,
 )
 @click.option("--body", "-B", callback=jsonify, help="Request body")
+@click.option("--curl", is_flag=True, help="Show curl command line")
 @click.option("--show-header", is_flag=True, help="Show response header")
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "PATCH", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
 @click.pass_context
 def call(
-    ctx: click.Context, method: str, path: str, headers: dict[str, str], body: TypeJson, show_header: bool, pretty: bool
+    ctx: click.Context,
+    method: str,
+    path: str,
+    headers: dict[str, str],
+    body: TypeJson,
+    curl: bool,
+    show_header: bool,
+    pretty: bool,
 ):
     appname = ctx.parent.command_path
 
     caller = Caller(restore_session(appname=appname), credential_applier=auth.credential_applier)
+    request = caller.request(method, path, headers=headers, body=body)
+
+    if curl:
+        click.echo(request.similar_of_curl())
+        sys.exit(0)
 
     try:
-        response = caller(method, path, headers=headers, body=body)
+        response = request.invoke()
 
         if show_header:
             echo_stderr = partial(click.echo, err=True)

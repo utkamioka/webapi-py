@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import logging
 
-from .._types import TypeJson
 from ..session import AuthenticatedSession
 
 logger = logging.getLogger(__name__)
@@ -21,11 +20,7 @@ def authenticator(credential: dict) -> str:
     return "DUMMY_AUTHORIZATION_TOKEN"
 
 
-def credential_applier(
-    session: AuthenticatedSession,
-    headers: dict[str, str],
-    body: TypeJson,
-) -> tuple[dict[str, str], TypeJson]:
+def credential_applier(session: AuthenticatedSession, headers: dict[str, str]) -> dict[str, str]:
     """アクセストークンを適用する。
 
     Returns:
@@ -35,6 +30,5 @@ def credential_applier(
 
     # アクセストークンを含むヘッダのロギングはしない方が望ましい
     logger.debug("headers = %s", headers)
-    logger.debug("body = %s", body)
 
-    return headers, body
+    return headers
