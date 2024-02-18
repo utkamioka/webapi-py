@@ -92,7 +92,7 @@ def test_validate_path_of_url():
 
 
 def test_parse_key_value_pair():
-    obj = main.parse_key_value_pair(None, None, ["a:alpha", "b:bravo", "c:charlie"])
+    obj = main.parse_key_value_pair(None, None, ["a: alpha", " b : bravo ", " c : charlie "])
     assert obj == {
         "a": "alpha",
         "b": "bravo",
@@ -118,61 +118,61 @@ def test_parse_key_value_pair__invalid():
         main.parse_key_value_pair(None, None, ["a"])
 
 
-def test__path_to_session():
-    assert main._path_to_session(appname="appname") == Path(".appname") / "session"
+def test__path_to_credentials():
+    assert main._path_to_credentials(appname="appname") == Path(".appname") / "credentials"
 
 
-def test_restore_session__env(monkeypatch: MonkeyPatch):
+def test_restore_credentials__env(monkeypatch: MonkeyPatch):
     monkeypatch.setenv("APPNAME_HOST", "foo")
     monkeypatch.setenv("APPNAME_PORT", "65535")
-    monkeypatch.setenv("APPNAME_AUTH_TOKEN", "bar")
+    monkeypatch.setenv("APPNAME_ACCESS_TOKEN", "bar")
 
-    session = main.restore_session(appname="appname")
+    credentials = main.restore_credentials(appname="appname")
 
-    assert session.host == "foo"
-    assert session.port == 65535
-    assert session.auth_token == "bar"
+    assert credentials.host == "foo"
+    assert credentials.port == 65535
+    assert credentials.access_token == "bar"
 
 
-def test_restore_session__file(tmp_dir: Path):
+def test_restore_credentials__file(tmp_dir: Path):
     appname = "__appname__"
 
     assert tmp_dir == Path.cwd()
 
-    path = Path(".") / f".{appname}" / "session"
+    path = Path(".") / f".{appname}" / "credentials"
     path.parent.mkdir(parents=True, exist_ok=True)
 
     with path.open(mode="wt") as f:
-        toml.dump({"host": "www.example.org", "port": 999, "auth_token": "*SECRET*"}, f)
+        toml.dump({"host": "www.example.org", "port": 999, "access_token": "*SECRET*"}, f)
 
-    session = main.restore_session(appname=appname)
+    credentials = main.restore_credentials(appname=appname)
 
-    assert session.host == "www.example.org"
-    assert session.port == 999
-    assert session.auth_token == "*SECRET*"
+    assert credentials.host == "www.example.org"
+    assert credentials.port == 999
+    assert credentials.access_token == "*SECRET*"
 
 
-def test_restore_session__missing_both(tmp_dir: Path):
+def test_restore_credentials__missing_both(tmp_dir: Path):
     with pytest.raises(click.ClickException):
-        main.restore_session(appname="appname")
+        main.restore_credentials(appname="appname")
 
 
-def test_restore_session__existing_both(monkeypatch: MonkeyPatch, tmp_dir: Path):
+def test_restore_credentials__existing_both(monkeypatch: MonkeyPatch, tmp_dir: Path):
     appname = "appname"
 
     monkeypatch.setenv("APPNAME_HOST", "www1.example.org")
     monkeypatch.setenv("APPNAME_PORT", "1234")
-    monkeypatch.setenv("APPNAME_AUTH_TOKEN", "*SECRET1*")
+    monkeypatch.setenv("APPNAME_ACCESS_TOKEN", "*SECRET1*")
 
-    path = tmp_dir / f".{appname}" / "session"
+    path = tmp_dir / f".{appname}" / "credentials"
     path.parent.mkdir(parents=True, exist_ok=True)
 
     with path.open(mode="wt") as f:
-        toml.dump({"host": "www2.example.org", "port": 4321, "auth_token": "*SECRET2*"}, f)
+        toml.dump({"host": "www2.example.org", "port": 4321, "access_token": "*SECRET2*"}, f)
 
-    session = main.restore_session(appname="appname")
+    credentials = main.restore_credentials(appname="appname")
 
     # 環境変数とファイル、両方ある場合は、環境変数を優先適用
-    assert session.host == "www1.example.org"
-    assert session.port == 1234
-    assert session.auth_token == "*SECRET1*"
+    assert credentials.host == "www1.example.org"
+    assert credentials.port == 1234
+    assert credentials.access_token == "*SECRET1*"

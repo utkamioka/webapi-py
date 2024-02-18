@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import logging
 
-from ..session import AuthenticatedSession
+from ..credentials import AuthenticatedCredentials, Credentials
 
 logger = logging.getLogger(__name__)
 
 
-def authenticator(credential: dict) -> str:
+def authenticator(credential: Credentials) -> str:
     """認証する。
 
     Returns:
@@ -20,13 +20,13 @@ def authenticator(credential: dict) -> str:
     return "DUMMY_AUTHORIZATION_TOKEN"
 
 
-def credential_applier(session: AuthenticatedSession, headers: dict[str, str]) -> dict[str, str]:
-    """アクセストークンを適用する。
+def credential_applier(credentials: AuthenticatedCredentials, headers: dict[str, str]) -> dict[str, str]:
+    """リクエストヘッダにアクセストークンを適用する。
 
     Returns:
-        アクセストークンを適用したヘッダとボディ
+        アクセストークンを適用したリクエストヘッダ
     """
-    headers.update({"Authorization": "Bearer " + session.auth_token})
+    headers.update({"Authorization": "Bearer " + credentials.access_token})
 
     # アクセストークンを含むヘッダのロギングはしない方が望ましい
     logger.debug("headers = %s", headers)

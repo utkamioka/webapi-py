@@ -1,3 +1,6 @@
+# application directory
+/.webapi
+
 # Created by https://www.toptal.com/developers/gitignore/api/windows,linux,osx,emacs,vim,visualstudiocode,jetbrains+all,python,venv,git
 # Edit at https://www.toptal.com/developers/gitignore?templates=windows,linux,osx,emacs,vim,visualstudiocode,jetbrains+all,python,venv,git
 

@@ -17,7 +17,7 @@ from . import __version__
 from ._types import TypeJson
 from .caller import Caller, HttpResponseError
 from .dummy import auth
-from .session import Session, AuthenticatedSession
+from .credentials import Credentials, AuthenticatedCredentials
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +25,7 @@ logger = logging.getLogger(__name__)
 class CustomOrderGroup(click.Group):
     def list_commands(self, ctx: click.Context) -> list[str]:
         # Usageに表示されるサブコマンドの表示順序を制御するための仕掛け
-        command_order = ["session", "call"]
+        command_order = ["auth", "call"]
         unlisted_commands = list(set(self.commands.keys()) - set(command_order))
         return command_order + unlisted_commands
 
@@ -65,32 +65,34 @@ def validate_path_of_url(_ctx, _param, value: str) -> str:
 
 def parse_key_value_pair(_ctx, _param, values: Sequence[str]) -> dict[str, str]:
     """ "key:value"形式の文字列を格納した配列からdictに変換する。
+    keyとvalueに含まれる前後の空白は除去する。
 
     Examples:
-        >>> parse_key_value_pair(["a:alpha", "b:bravo", "c:charlie"])
+        >>> parse_key_value_pair(["a: alpha", "b: bravo", "c: charlie"])
         {"a": "alpha", "b": "bravo", "c": "charlie"}
     """
-    return dict(item.split(":", maxsplit=1) for item in values)
+    key_value_pairs = (item.split(":", maxsplit=1) for item in values)
+    return {_key.strip(): _value.strip() for _key, _value in key_value_pairs}
 
 
-def _path_to_session(appname: str) -> Path:
-    return Path(".") / ("." + appname) / "session"
+def _path_to_credentials(appname: str) -> Path:
+    return Path(".") / ("." + appname) / "credentials"
 
 
-def restore_session(*, appname: str) -> AuthenticatedSession:
+def restore_credentials(*, appname: str) -> AuthenticatedCredentials:
     """環境変数またはファイルからセッションを復元する。"""
     with contextlib.suppress(KeyError):
-        return Session.from_env(prefix=appname.upper() + "_")
+        return Credentials.from_env(prefix=appname.upper() + "_")
 
     try:
-        path_to_session = _path_to_session(appname)
-        session_remover = partial(path_to_session.expanduser().absolute().unlink, missing_ok=True)
+        path = _path_to_credentials(appname)
+        credentials_remover = partial(path.expanduser().absolute().unlink, missing_ok=True)
 
-        return Session.from_file(path_to_session).on_purge(session_remover)
+        return Credentials.from_file(path).on_purge(credentials_remover)
     except FileNotFoundError:
         raise click.ClickException(
-            "No authenticated session. Please authenticate using the"
-            " " + click.style("'session'", fg="red", bold=True) + " subcommand first."
+            "No yet authenticated. Please authenticate using the"
+            " " + click.style("'auth'", fg="red", bold=True) + " subcommand first."
         )
 
 
@@ -123,23 +125,23 @@ def cli(ctx: click.Context, verbose: int) -> None:
         click.echo(ctx.get_help())
 
 
-@cli.command(no_args_is_help=True)
+@cli.command(name="auth", no_args_is_help=True)
 @click.option("--host", "-h", help="Host name or IP address", required=True)
 @click.option("--port", "-p", help="Port number", type=int, default=443, show_default=True)
 @click.option("--user", "-U", "username", help="Username", required=True)
 @click.option("--pass", "-P", "password", help="Password  [required, otherwise prompt]", prompt=True, hide_input=True)
-@click.option("--env", "export_to_env", is_flag=True, help="Export session as environment variable to stdout")
+@click.option("--env", "export_to_env", is_flag=True, help="Export access token as environment variable to stdout")
 @click.pass_context
-def session(ctx: click.Context, host: str, port: int, username: str, password: str, export_to_env: bool) -> None:
+def cmd_auth(ctx: click.Context, host: str, port: int, username: str, password: str, export_to_env: bool) -> None:
     appname = ctx.parent.command_path
 
-    authenticated_session = Session(host, port).authenticate(username, password, authenticator=auth.authenticator)
+    credentials = Credentials(host, port, username, password).authenticate(authenticator=auth.authenticator)
 
     if export_to_env:
-        authenticated_session.print_to_env(prefix=appname.upper() + "_")
+        credentials.print_to_env(prefix=appname.upper() + "_")
     else:
-        authenticated_session.write_to_file(_path_to_session(appname))
-        click.echo("Authentication was successful and the session was saved.")
+        credentials.write_to_file(_path_to_credentials(appname))
+        click.echo("Authentication was successful and the credentials was saved.")
 
 
 @cli.command(no_args_is_help=True)
@@ -170,11 +172,11 @@ def call(
 ):
     appname = ctx.parent.command_path
 
-    caller = Caller(restore_session(appname=appname), credential_applier=auth.credential_applier)
+    caller = Caller(restore_credentials(appname=appname), credential_applier=auth.credential_applier)
     request = caller.request(method, path, headers=headers, body=body)
 
     if curl:
-        click.echo(request.similar_of_curl())
+        click.echo(" ".join(request.similar_of_curl()))
         sys.exit(0)
 
     try:
@@ -197,7 +199,7 @@ def call(
     except HttpResponseError as e:
         if e.status_code == 401:
             # 401(Unauthorized)が発生したら認証情報を破棄
-            caller.session.purge()
+            caller.credentials.purge()
 
         click.echo(click.style(str(e.status_code), fg="blue") + " " + click.style(e.reason, fg="cyan"), err=True)
         click.echo(e.text)
