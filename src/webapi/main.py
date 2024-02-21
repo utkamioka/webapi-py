@@ -21,6 +21,8 @@ from .credentials import Credentials, AuthenticatedCredentials
 
 logger = logging.getLogger(__name__)
 
+APPNAME = "webapi"
+
 
 class CustomOrderGroup(click.Group):
     def list_commands(self, ctx: click.Context) -> list[str]:
@@ -131,16 +133,13 @@ def cli(ctx: click.Context, verbose: int) -> None:
 @click.option("--user", "-U", "username", help="Username", required=True)
 @click.option("--pass", "-P", "password", help="Password  [required, otherwise prompt]", prompt=True, hide_input=True)
 @click.option("--env", "export_to_env", is_flag=True, help="Export access token as environment variable to stdout")
-@click.pass_context
-def cmd_auth(ctx: click.Context, host: str, port: int, username: str, password: str, export_to_env: bool) -> None:
-    appname = ctx.parent.command_path
-
+def cmd_auth(host: str, port: int, username: str, password: str, export_to_env: bool) -> None:
     credentials = Credentials(host, port, username, password).authenticate(authenticator=auth.authenticator)
 
     if export_to_env:
-        credentials.print_to_env(prefix=appname.upper() + "_")
+        credentials.print_to_env(prefix=APPNAME.upper() + "_")
     else:
-        credentials.write_to_file(_path_to_credentials(appname))
+        credentials.write_to_file(_path_to_credentials(APPNAME))
         click.echo("Authentication was successful and the credentials was saved.")
 
 
@@ -159,9 +158,7 @@ def cmd_auth(ctx: click.Context, host: str, port: int, username: str, password: 
 @click.option("--pretty", "-p", is_flag=True, help="Pretty printing output")
 @click.argument("method", type=click.Choice(["GET", "POST", "PUT", "PATCH", "DELETE"], case_sensitive=False))
 @click.argument("path", callback=validate_path_of_url)
-@click.pass_context
 def call(
-    ctx: click.Context,
     method: str,
     path: str,
     headers: dict[str, str],
@@ -170,9 +167,7 @@ def call(
     show_header: bool,
     pretty: bool,
 ):
-    appname = ctx.parent.command_path
-
-    caller = Caller(restore_credentials(appname=appname), credential_applier=auth.credential_applier)
+    caller = Caller(restore_credentials(appname=APPNAME), credential_applier=auth.credential_applier)
     request = caller.request(method, path, headers=headers, body=body)
 
     if curl:
